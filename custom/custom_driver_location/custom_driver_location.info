@@ -1,0 +1,8 @@
+name = Driver location module
+description = 'creates a block that has an iframe that allows the driver to update thir location'
+package = "Trophy profile - MMWD"
+core = "7.x"
+version = "7.x-1.0"
+files[] = custom_driver_location/custom_driver_location.module
+
+

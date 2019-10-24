@@ -1,0 +1,97 @@
+<?php
+/**
+ * @file
+ * Code to set a block to load a profile
+ */
+
+function custom_driver_location_block_info() {
+  $blocks['driver_location'] = array(
+    'info' => t('Driver location block'),
+    'status' => TRUE,
+    'region' => 'invisible',
+    'weight' => 0,
+    'visibility' => 1,
+    );
+  return $blocks;
+}
+
+/**
+* Implements hook_block_configure().
+*/
+function custom_driver_location_block_configure($delta) {
+  $form = array();
+  switch($delta) {
+    case 'driver_location':
+    $form['driver_location_profile'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Configure The profile2 profile to put in the iframe'),
+    '#size' => 20,
+    '#description' => t('Enter the profile to put in the block.'),
+    '#default_value' => variable_get('driver_location_profile', 'driver'),
+    );
+    break;
+  }
+  return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function custom_driver_location_block_save($delta = '', $edit = array()) {
+  switch($delta) {
+    case 'driver_location':
+    variable_set('driver_location_profile', $edit['driver_location_profile']);
+    break;
+  }
+  return;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function custom_driver_location_block_view($delta = '') {
+  global $user;
+  drupal_add_js("
+
+jQuery(window).load(function(){
+  if (jQuery('#update-driver-location-callback').length > 0) {
+    updateDriverGeoLocation = function(position) {
+      var url = '/sites/all/modules/custom/custom_driver_location/update_driver_location.php?';
+      var lat = position.coords.latitude;
+      var lon = position.coords.longitude;
+      timeStamp = new Date().getTime();
+      url = url + 'lat=' + lat + '&lon=' + lon + '&time=' + timeStamp;
+      //alert(url);
+      jQuery('#update-driver-location-callback').attr('src', url);
+    };
+
+    // onError Callback receives a PositionError object
+    //
+    function onError(error) {
+      //error = JSON.stringify(error, null, 4);
+      error = error.code;
+      //alert(error);
+      console.log(error);
+    }
+
+    //alert('starting?');
+    //navigator.geolocation.getCurrentPosition(updateDriverGeoLocation, onError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true} );
+    navigator.geolocation.getCurrentPosition(updateDriverGeoLocation, onError, {timeout:60000, enableHighAccuracy:true} );
+    //navigator.geolocation.watchPosition(updateDriverGeoLocation, onError, {maximumAge    :60000, timeout:5000, enableHighAccuracy:true});
+    navigator.geolocation.watchPosition(updateDriverGeoLocation, onError, {timeout:60000, enableHighAccuracy:true});
+  }
+});
+
+", array (
+  'type' => 'inline', 
+  'scope' => 'footer',
+));
+
+  $uid = $user->uid;
+  $block['subject'] = '<none>';
+  $block['content'] = '<iframe id="update-driver-location-callback" src="" ></iframe>';
+  return $block;
+}
+
+
+

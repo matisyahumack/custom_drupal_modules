@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * @file
+ */
+
+/**
+ * @param $uid
+ *   User to send message to.
+ * @param $message
+ *   The HTML to be sent to the user.
+ */
+function custom_messaging_user_alert($uid, $message) {
+  if (!is_string($message)) {
+    //$message = '$message = <pre>' . print_r($message, TRUE) . '</pre>';
+    //$message .= '$uid = <pre>' . print_r($uid, TRUE) . '</pre>';
+    $message = print_r($message, TRUE);
+  }
+  if (!is_string($uid) && !is_int($uid)) {
+    if (isset($uid)) {
+      $uid = $uid->uid;
+      if (!is_string($uid) && !is_int($uid)) {
+        $message = '<pre> uid =' . print_r($uid, TRUE) . '</pre>';
+        $message .= '<pre> uid is of type ' . gettype($uid ) . '</pre>';
+      }
+    }
+  }
+  if (is_string($uid)) {
+    $uid = intval($uid);
+  }
+  nodejs_send_user_message($uid, 'Alert', $message, NULL, 0);
+}

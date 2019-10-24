@@ -1,0 +1,8 @@
+name = Rides Available
+description = List of Rides available
+package = Rideclever
+core = 7.x
+dependencies[] = entity
+dependencies[] = nodejs
+
+files[] = custom_pickup.module

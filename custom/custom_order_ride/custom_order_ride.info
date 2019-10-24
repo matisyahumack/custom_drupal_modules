@@ -1,0 +1,7 @@
+name = Driver order ride
+description = 'Creates an order and relates it to the ride when the order is made'
+package = "Ride Clever - MMWD"
+core = "7.x"
+version = "7.x-1.0"
+files[] = custom_order_ride/custom_order_ride.module
+dependencies[] = entity

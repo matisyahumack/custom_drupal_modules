@@ -1,0 +1,26 @@
+<?php
+/*
+ * @function Creates a cart and relates it to the node.
+ */
+function custom_order_ride_node_presave($node) {
+  if ($node->type == 'ride_booker') {
+    //drupal_set_message(print_r($node->field_order['und'][0]['target_id'], true));
+    //drupal_set_message('<pre>' . print_r($node, true) .'</pre>');
+    //*
+    if (!isset($node->field_order['und'][0]['target_id'])) {
+      $uid = $node->uid;
+      $status = 'cart'; // probably change this to cart
+      $type = 'commerce_order';
+
+      $order = commerce_order_new($uid, $status, $type);
+      commerce_order_save($order);
+
+      // get the order id of the new order
+      $order_id = $order->order_id;
+
+      //update the node so that it is related to the order
+      $node->field_order['und'][0]['target_id'] = $order_id;
+    }
+    //*/
+  }
+}

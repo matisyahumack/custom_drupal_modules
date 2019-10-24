@@ -1,0 +1,7 @@
+name = Custom Messanging
+description = 'Custom Messaging rules actions and functions.'
+package = "Ride Clever - MMWD"
+core = "7.x"
+version = "7.x-1.0"
+files[] = custom_messaging.module
+dependencies[] = entity
