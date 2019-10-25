@@ -1,0 +1,7 @@
+name = Charge ride functions
+description = 'Custom billing functions'
+package = "Black car - MMWD"
+core = "7.x"
+version = "7.x-1.0"
+dependencies[] = entity
+dependencies[] = trip_logger

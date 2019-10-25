@@ -1,0 +1,15 @@
+<?php
+
+/**
+ * @file
+ * Stub file to include the modules views..
+ */
+
+/**
+ * Implements hook_views_api().
+ */
+function custom_waypoints_view_views_api($module, $api) {
+  if ($module == 'views' && $api == 'views_default') {
+    return array('version' => 2);
+  }
+}

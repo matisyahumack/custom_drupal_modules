@@ -28,33 +28,34 @@ function custom_pickup_rules_action_info() {
 function custom_pickup_send_driver_alerts($node, $uid = 1) {
   $nid = $node->nid;
   if ($node->type == 'ride_booker') {
-    $rid[] = 4;
-  }
-  else if ($node->type == 'taxi_ride') {
-    $wrapper = entity_metadata_wrapper('node', $nid);
-    foreach ($wrapper->field_taxi_region->getIterator() as $term_wrapper) {
-      $tid = $term_wrapper->tid->value();
+    $rid[0] = 4; // TODO this needs to be found dynamically of towncar, hybrid, or whatever.
+
+    watchdog('Driver alerts', '$node = ' . print_r($node, TRUE), array(), WATCHDOG_DEBUG, 'node/' . $nid);
+
+
+    foreach ($node->field_car_type[$node->language] as $term_wrapper) {
+      $tid = $term_wrapper['tid'];
+      watchdog('Driver alerts', 'tid = ' . $tid, array(), WATCHDOG_DEBUG, 'node/' . $nid);
     }
 
     if (!isset($tid)) {
       watchdog(
         'notifications',
         //'<pre>' . htmlentities(print_r($wrapper, TRUE)) . '</pre>' .
-        '<pre>' . htmlentities(print_r($wrapper->field_taxi_region, TRUE)) . '</pre>',
+        '<pre>' . $tid . '</pre>',
         array(),
         WATCHDOG_ERROR,
-        NULL
+        'node/' . $nid
       );
     }
 
-
-    $roles = db_query("SELECT DISTINCT rid FROM related_roles_role WHERE tid = :tid ",
+    $roles = db_query("SELECT DISTINCT rid FROM {related_roles_role} WHERE tid = :tid ",
       array(
         ':tid' => $tid,
       ))->fetchAll();
     $x = count($roles);
     $i = 0;
-    foreach ($roles as $role){
+    foreach ($roles as $role) {
       $rid[$i] = $role->rid;
       $i++;
     }
@@ -79,7 +80,7 @@ function custom_pickup_send_driver_alerts($node, $uid = 1) {
 }
 
 /**
- * Implements hook_default_rules_configuration_alter()
+ * Implements hook_default_rules_configuration_alter().
  */
 function custom_pickup_default_rules_configuration_alter(&$configs) {
   if (!empty($configs['custom_pickup'])) {

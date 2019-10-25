@@ -1,4 +1,20 @@
 <?php
+
+/**
+ * Implements hook_menu().
+ */
+function custom_driver_location_menu() {
+  $items = array();
+
+  $items['get_driver_location'] = array(
+    'title'            => 'Get updated driver\'s location',
+    'page callback'    => 'custom_driver_location_updated',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
 /**
  * @file
  * Code to set a block to load a profile
@@ -51,47 +67,42 @@ function custom_driver_location_block_save($delta = '', $edit = array()) {
  */
 function custom_driver_location_block_view($delta = '') {
   global $user;
-  drupal_add_js("
-
-jQuery(window).load(function(){
-  if (jQuery('#update-driver-location-callback').length > 0) {
-    updateDriverGeoLocation = function(position) {
-      var url = '/sites/all/modules/custom/custom_driver_location/update_driver_location.php?';
-      var lat = position.coords.latitude;
-      var lon = position.coords.longitude;
-      timeStamp = new Date().getTime();
-      url = url + 'lat=' + lat + '&lon=' + lon + '&time=' + timeStamp;
-      //alert(url);
-      jQuery('#update-driver-location-callback').attr('src', url);
-    };
-
-    // onError Callback receives a PositionError object
-    //
-    function onError(error) {
-      //error = JSON.stringify(error, null, 4);
-      error = error.code;
-      //alert(error);
-      console.log(error);
-    }
-
-    //alert('starting?');
-    //navigator.geolocation.getCurrentPosition(updateDriverGeoLocation, onError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true} );
-    navigator.geolocation.getCurrentPosition(updateDriverGeoLocation, onError, {timeout:60000, enableHighAccuracy:true} );
-    //navigator.geolocation.watchPosition(updateDriverGeoLocation, onError, {maximumAge    :60000, timeout:5000, enableHighAccuracy:true});
-    navigator.geolocation.watchPosition(updateDriverGeoLocation, onError, {timeout:60000, enableHighAccuracy:true});
+  $node = '';
+  if (arg(0)=='node' && is_numeric(arg(1))) {
+    $node =  arg(1);
   }
-});
 
-", array (
-  'type' => 'inline', 
-  'scope' => 'footer',
-));
 
   $uid = $user->uid;
   $block['subject'] = '<none>';
-  $block['content'] = '<iframe id="update-driver-location-callback" src="" ></iframe>';
+  $block['content'] = '<span id="update-driver-location-callback" ></span>';
+  if ($node !== '') {
+    $block['content'] .= '<span id="node-id-value" >' . $node . '</span>';
+  }
   return $block;
 }
 
-
+function custom_driver_location_updated(){
+	$nid = $_POST['nid']; 
+	if($nid) {
+		$node = node_load($nid);
+		$uid = $node->field_car_driver['und'][0]['target_id'];
+		if($uid) {
+			$user = user_load($uid);
+			$profile2 = profile2_load_by_user($user);
+			$lat = $profile2['driver']->field_car_location['und']['0']['lat'];
+			$lon = $profile2['driver']->field_car_location['und']['0']['lon'];
+			echo json_encode(array("lat"=>($lat),"lon"=>$lon));
+			die;
+		}
+		else {
+		  echo "error";
+			die;
+		}
+	}
+	else {
+		echo "error";
+		die;
+	}
+}	
 

@@ -1,0 +1,6 @@
+name = custom_waypoints_view export module
+description = Export objects from CTools
+dependencies[] = views
+dependencies[] = kml
+package = Chaos tool suite
+core = 7.x

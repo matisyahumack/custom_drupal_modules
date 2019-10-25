@@ -28,7 +28,7 @@ function custom_messaging_send_user_alerts($uid=1, $message) {
 }
 
 /**
- * Implements hook_default_rules_configuration_alter()
+ * Implements hook_default_rules_configuration_alter().
  */
 function custom_messaging_default_rules_configuration_alter(&$configs) {
   if (!empty($configs['custom_messaging'])) {

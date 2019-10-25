@@ -1,27 +1,39 @@
-<?php 
+<?php
 /**
  * @file
  * Handles all of the custom pickup functions
  */
 
-/*
+/**
  * Implements hook_menu().
  */
-function custom_pickup_menu(){
+function custom_pickup_menu() {
   $items = array();
-         
+
   $items['pickup'] = array(
-    'title'            => t('Rides Available'),
+    'title'            => 'Rides Available',
     'page callback'    => 'custom_pickup_output',
     'access arguments' => array('access content'),
   );
 
   $items['pickup/admin'] = array(
-    'title'            => t('Rides Available'),
+    'title'            => 'Rides Available',
     'page callback'    => 'custom_pickup_output',
     'access arguments' => array('access content'),
   );
-             
+	
+	$items['pickup/get_customer_loc'] = array(
+    'title'            => 'Customer location',
+    'page callback'    => 'custom_pickup_get_customer_loc',
+    'access arguments' => array('access content'),
+  );
+	
+	$items['pickup/get_avail_drivers_location'] = array(
+    'title'            => 'Driver location',
+    'page callback'    => 'custom_pickup_get_driver_loc',
+    'access arguments' => array('access content'),
+  );
+
   return $items;
 }
 
@@ -29,25 +41,24 @@ function custom_pickup_menu(){
  * Function that returns all available rides
  *
  * @pram string $cck
- *   The node type that you want to query. Initially either
- *   'ride_booker' or 'taxi_ride'.
+ *   The node type that you want to query..
  *
  * @param string $cck
  * @return array
  *   This returns all available rides as an array of objects
  */
-function custom_pickup_available_rides($cck='taxi_ride'){
+function custom_pickup_available_rides($cck='taxi_ride') {
   $rides = db_query('
   SELECT
     node.nid,
     start_time.field_start_time_value,
     field_datageo_lat,
     field_datageo_lon
-  FROM 
-    node 
+  FROM
+    node
     left join field_data_field_car_driver as driver
       on driver.entity_id = node.nid
-    join field_data_field_datageo as geo 
+    join field_data_field_datageo as geo
       on geo.entity_id = node.nid
     join field_data_field_start_time as start_time
       on start_time.entity_id = node.nid
@@ -66,7 +77,9 @@ function custom_pickup_available_rides($cck='taxi_ride'){
  * @return string
  */
 function custom_pickup_content($uid=0) {
-  $x = 0;
+  global $base_url;
+	
+	$x = 0;
   $content = '';
 
   $rides = custom_pickup_available_rides();
@@ -75,12 +88,19 @@ function custom_pickup_content($uid=0) {
   $content .= '<div>';
   while ($x > 0) {
     $x--;
-    $content .= '<a class="large button success" href="/node/' .$rides[$x]->nid . '/accept">'. t('Pickup Ride at ') . date("Y-m-d H:i:s", $rides[$x]->field_start_time_value) ;
+    $content .= '<a class="large button success" href="/node/' . $rides[$x]->nid . '/accept">' . t('Pickup Ride at :date', array(':date' => date("Y-m-d H:i:s", $rides[$x]->field_start_time_value)));
     $content .= custom_pickup_drivers($rides[$x]->field_datageo_lat, $rides[$x]->field_datageo_lon);
     $content .=  '</a>';
-    $content .=  '<br>';
-		$content .= '<audio src="/sites/all/themes/black_car/alert.mp3"  autoplay></audio>';
-    $content .= '<span class="large button alert reject" href="">'. t('Reject');
+    $content .=  '<br />';
+    $content .= '<audio src="https://www.black.cr/alert.mp3" autoplay></audio>';
+   /* $content .= '
+		<script type="text/javascript">
+			console.log("'.$base_url.'/alert.mp3");
+		</script>
+		<audio controls autoplay>
+		 <source src="'.$base_url.'/alert.mp3" type="audio/mpeg">
+		</audio>';*/
+    $content .= '<span class="large button alert reject" href="">' . t('Reject');
     $content .=  '</span>';
   }
 
@@ -103,8 +123,8 @@ function custom_pickup_content($uid=0) {
 function custom_pickup_taxi_area($lat, $lon) {
     $taxi_area = db_query('
       SELECT DISTINCT
-        entity_id "eid" 
-      FROM   
+        entity_id "eid"
+      FROM
         field_data_field_coverage_area
       WHERE
           entity_type LIKE :taxonomy
@@ -112,11 +132,11 @@ function custom_pickup_taxi_area($lat, $lon) {
           bundle = :taxi_area
         AND
           field_coverage_area_left < :lon
-        AND 
+        AND
           field_coverage_area_right > :lon
-        AND 
+        AND
           field_coverage_area_top > :lat
-        AND 
+        AND
           field_coverage_area_bottom < :lat
         ', array(
           ':taxonomy' => 'taxonomy_term',
@@ -125,69 +145,6 @@ function custom_pickup_taxi_area($lat, $lon) {
           ':lon' => $lon,
           ))->fetchAll();
     return $taxi_area;
-}
-
-/**
- * Implements hook_node_validate().
- */
-function custom_pickup_node_validate($node, &$form, &$form_state) {
-  if ($node->type === 'taxi_ride') {
-    // validation test -- could be an include file
-    $lat = $form['field_geoloc']['und'][0]['lat']['#value'];
-    $lon = $form['field_geoloc']['und'][0]['lng']['#value'];
-    $taxi_area = custom_pickup_taxi_area($lat, $lon);
-    
-
-    if ( count($taxi_area) === 0 ) {
-      form_set_error('the address field --- this needs changed', 
-        t('The address you requested is not covered by any of our taxi companies. You could try and request a town car.'));
-    } else {
-    }
-    // test to see if the date is in the future or not
-    $pickup_time = $form['field_start_time']['und'][0]['#value']['value']['year'];
-    $pickup_time .= '-' . $form['field_start_time']['und'][0]['#value']['value']['month'];
-    $pickup_time .= '-' . $form['field_start_time']['und'][0]['#value']['value']['day'];
-    $pickup_time .= ' ' . $form['field_start_time']['und'][0]['#value']['value']['hour'];
-    $pickup_time .= ':' . $form['field_start_time']['und'][0]['#value']['value']['minute'];
-    $pickup_time .= ' ' . $form['field_start_time']['und'][0]['#value']['value']['ampm'];
-    $pickup_time .= ' ' . $form['field_start_time']['und'][0]['#default_value']['timezone'];
-    
-    $pickup_time = strtotime($pickup_time);
-    $temp =  $pickup_time - time();
-    if ($temp < -300) {
-      form_set_error('pickup time in past', 
-        t('The pickup time is in the past. Unfortunately, none of our taxis are equipped with a flux capacitor.'));
-    }
-
-  }
-}
-
-/**
- * Implements hook_node_presave();
- *   Adds the term IDs of the taxi companies that cover the area.
- */
-function custom_pickup_node_presave($node ) {
-  if ($node->type === 'taxi_ride') {
-    $lat = $node->field_geoloc[$node->language][0]['lat'];
-    $lon = $node->field_geoloc[$node->language][0]['lng'];
-    $start_time = $node->field_start_time[$node->language][0]['value'];
-    $taxi_area = custom_pickup_taxi_area($lat, $lon);
-    if (count($taxi_area) > 0 ) {
-      $i = 0;
-      $x = count($taxi_area);
-      while ($i < $x) {
-        $node->field_taxi_region[$node->language][]['tid'] = $taxi_area[$i]->eid;
-        $i++;
-      }
-    }
-    $current_time = time();
-    if ( ($current_time - $start_time) > 0) {
-      if ($current_time - $start_time < 300) {
-        $start_time = $current_time;
-      }
-    }
-    $node->field_start_time[$node->language][0]['value'] = $start_time ;
-  }
 }
 
 /**
@@ -203,14 +160,14 @@ function custom_pickup_node_presave($node ) {
  * @return string
  *   The HTML to embed in a page or block.
  */
-function custom_pickup_drivers($lat=0, $lon=0, $rid= array(4,11)) {
+function custom_pickup_drivers($lat=0, $lon=0, $rid= array(4, 11)) {
   $x = 0;
   $content = '';
   $drivers = db_query('
   select
     profile.uid,
     entity_id,
-    sqrt( power((field_car_location_lat - :lat ) ,2)  + power((field_car_location_lon - :lon) ,2)) * 69  as distance 
+    sqrt( power((field_car_location_lat - :lat ) ,2)  + power((field_car_location_lon - :lon) ,2)) * 69  as distance
   from
     field_data_field_car_location
     join profile
@@ -223,14 +180,14 @@ function custom_pickup_drivers($lat=0, $lon=0, $rid= array(4,11)) {
         (select uid from users_roles where rid = 8)
   AND
     users_roles.rid IN (:rid)
-  order by 
-    distance desc', array(':lat' => $lat,':lon' => $lon, ':rid' => $rid))->fetchAll();
+  order by
+    distance desc', array(':lat' => $lat, ':lon' => $lon, ':rid' => $rid))->fetchAll();
 
   $x = count($drivers);
   while ($x > 0) {
     $x--;
-    $content .= '<div class="driver-'. $drivers[$x]->uid .'" >';
-    $content .= t('Driver ') . $drivers[$x]->uid . ' is ' . number_format($drivers[$x]->distance, 2) . ' miles away.';
+    $content .= '<div class="driver-' . $drivers[$x]->uid . '" >';
+    $content .= t('Driver :uid is :distance miles away.', array(':uid' => $drivers[$x]->uid, ':distance' => number_format($drivers[$x]->distance, 2)));
     $content .= '</div>';
   }
   return $content;
@@ -249,19 +206,26 @@ function custom_pickup_drivers($lat=0, $lon=0, $rid= array(4,11)) {
  * @internal param $
  */
 function custom_pickup_alert_button($nid, $distance, $bounty = 0, $start_time = NULL, $driver = -1) {
-
+  global $base_url; 
   $content = '<a class="large button success" href="/node/' . $nid . '/accept">' . t('Accept');
   if ($start_time != NULL) {
     //$content .= date("Y-m-d H:i:s", $start_time) . '<br />' ;
     $content .= date("H:i:s", $start_time) . '<br />';
   }
-  $content .= t('The Pickup is ') . number_format($distance, 2) . t(' miles away.');
-	$content .= '<audio src="/sites/all/themes/black_car/alert.mp3"  autoplay></audio>';
-  if ($bounty > 0){
+  $content .= t('The Pickup is :distance miles away', array(':distance' => number_format($distance, 2)));
+  $content .= '<audio src="https://www.black.cr/alert.mp3"  autoplay></audio>';
+   /*$content .= '
+	 <script type="text/javascript">
+			console.log("'.$base_url.'/alert.mp3");
+		</script>
+	 <audio controls autoplay>
+   <source src="'.$base_url.'/alert.mp3" type="audio/mpeg">
+  </audio>';*/
+  if ($bounty > 0) {
     $content .= '<h2>' . t('Bounty of $') . $bounty . '.</h2>';
   }
   $content .= '</a>';
-  $content .= '<br>';
+  $content .= '<br />';
   $content .= '<span class="large button alert reject" href="">' . t('Reject');
   $content .= '</span>';
   if ($driver > -1) {
@@ -287,7 +251,7 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
 
   $path = '/' . drupal_get_path('module', 'custom_pickup');
   $key = 'vUKtuYvHt3yT8CDBVu3QHq6IB92MwL6w'; // this should be grabbed from a config
-  $node_type = array('ride_booker', 'taxi_ride');
+  $node_type = array('ride_booker', );
 
   $rides = db_query('
   SELECT
@@ -296,13 +260,13 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
     start_time.field_start_time_value,
     field_datageo_lat,
     field_datageo_lon
-  FROM 
-    node 
+  FROM
+    {node} node
     left join field_data_field_car_driver as driver
       on driver.entity_id = node.nid
     left join field_data_field_ride_event as ride_event
       on ride_event.entity_id = node.nid
-    join field_data_field_datageo as geo 
+    join field_data_field_datageo as geo
       on geo.entity_id = node.nid
     join field_data_field_start_time as start_time
       on start_time.entity_id = node.nid
@@ -314,13 +278,13 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
     ( field_ride_event_tid is NULL OR
     field_ride_event_tid != 4 )
   and
-    node.type IN (:type)', array(':type' => $node_type,':nid' => $nid))->fetchAll();
+    node.type IN (:type)', array(':type' => $node_type, ':nid' => $nid))->fetchAll();
 
   if ( count($rides) === 0 ) {
     return;
   }
 
-  $lat = $rides[0]->field_datageo_lat; 
+  $lat = $rides[0]->field_datageo_lat;
   $lon = $rides[0]->field_datageo_lon;
   $message_id = 'ride' . $nid;
 
@@ -357,17 +321,17 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
     distance ASC', array(':lat' => $lat, ':lon' => $lon, ':rid' => $rid[0]))->fetchAll();
 
   $x = count($drivers);
-  if($x === 0) {
+  if ($x === 0) {
     $uid = $rides[0]->uid;
     $subject = t("No drivers");
     $body = t('We are sorry for the inconvience, Do you want to cancel or wait?'); // TODO: add cancel function.
     $callback = $path . '/callback.php?nid=' . $nid . '&uid=' . $uid . '&rid=' . $rid[0] . '&key=' . $key;
     $delay = 60000;
     nodejs_send_user_message($uid, $subject, $body, $callback, $delay);
-    //TODO: add a GCM hook, 
+    // TODO: add a GCM hook,
     return;
   }
-  else if ($x === 1) {
+  elseif ($x === 1) {
     $distance = $drivers[0]->distance;
     $bounty = 0;
     $start_time = NULL;
@@ -380,7 +344,7 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
     $subject = t('Customer Pickup');
     $callback = $path . '/callback.php?nid=' . $nid . '&uid=' . $uid . '&rid=' . $rid[0] . '&key=' . $key;
     nodejs_send_user_message($uid, $subject, $body, $callback, $delay);
-    //TODO: add a GCM hook, 
+    // TODO: add a GCM hook.
     return;
   }
   $i = 0;
@@ -413,7 +377,7 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
         $driver = -1;
         $body = custom_pickup_alert_button($nid, $distance, $bounty, $start_time, $driver);
         $callback = $path . '/callback.php?nid=' . $nid . '&uid=' . $uid . '&rid=' . $rid[0] . '&key=' . $key;
-      
+
         $i = $x;
       }
     }
@@ -427,7 +391,7 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
   return ;
 }
 
-/*
+/**
  * Display output
  *
  * @return string
@@ -436,17 +400,66 @@ function custom_pickup_driver_alert($nid=0, $uid=1, $rid=array(8)) {
 function custom_pickup_output() {
   global $user;
   $uid = $user->uid;
-
   header('Content-type: text/plain; charset=UTF-8');
   header('Content-Disposition: inline');
   $content  = custom_pickup_content($uid);
   return $content;
 }
 
-/*
-function custom_pickup_init() {
-  drupal_add_js( drupal_get_path('module', 'custom_pickup') . '/js/custom_pickup.js');
+//
+// function custom_pickup_init() {
+//   drupal_add_js( drupal_get_path('module', 'custom_pickup') . '/js/custom_pickup.js');
+// }
+
+
+/**
+* function to return customer location
+* called from script.js
+**/
+function custom_pickup_get_customer_loc() {
+   global $user;
+	 $nid = $_POST['nid'];
+	 $node = node_load($nid);
+	 if ($node->type == 'ride_booker') {
+		 $lat = $node->field_geoloc['und'][0]['lat'];
+		 $lon = $node->field_geoloc['und'][0]['lng'];
+		 echo json_encode(array("lat"=>$lat,"lon"=>$lon));
+	 } else {
+	   echo "error"; die;
+	 }
 }
-*/
 
-
+/**
+* function to return all drivers' location
+* called from script.js
+**/
+function custom_pickup_get_driver_loc() {
+    global $user;
+	  $query = db_select('profile', 'p');
+		$query->join('field_data_field_car_location', 'f', 'p.pid = f.entity_id');
+		$query->join('users', 'u', 'p.uid = u.uid');
+		$query->join('users_roles', 'r1', 'u.uid = r1.uid and r1.rid = 4');
+		$query->join('users_roles', 'r2', 'u.uid = r2.uid  and r2.rid = 7');
+		$query->join('users_roles', 'r3', 'u.uid = r3.uid  and r3.rid = 8');
+		$query
+			->fields('p', array('pid'))
+			->fields('u', array('name'))
+			->fields('f', array('field_car_location_wkt'))
+			->condition('p.type', 'driver')
+			->condition('r1.rid', '4')
+			->condition('r2.rid', '7')
+			->condition('r3.rid', '8');
+			$result = $query->execute();
+      $driver_array = array(); 
+			while($record = $result->fetchAssoc()) {
+			     //echo $record['field_car_location_wkt'];
+					 $temp_arr = explode('(', $record['field_car_location_wkt']);
+					 $loc_array = array();
+					 if ($temp_arr[1]) {
+					   $temp_arr[1] = str_replace(')', '', $temp_arr[1]);
+						 $loc_array = explode(' ', $temp_arr[1]);
+					 }
+					 $driver_array[$record['name']] = $loc_array;
+			}
+		 echo json_encode($driver_array);
+}

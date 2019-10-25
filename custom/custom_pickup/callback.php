@@ -49,7 +49,9 @@ if ($_GET['key'] != 'vUKtuYvHt3yT8CDBVu3QHq6IB92MwL6w') {
 
 $nid = intval($_GET['nid']);
 $uid = intval($_GET['uid']);
-$rid = array(intval($_GET['rid']),);
+$rid = array(
+  intval($_GET['rid']),
+);
 
 if ($nid > 1) { // garbage values of nid will commonly return 1 or 0 and the nid of the ride will always be greater than 1
   custom_pickup_driver_alert($nid, $uid, $rid);

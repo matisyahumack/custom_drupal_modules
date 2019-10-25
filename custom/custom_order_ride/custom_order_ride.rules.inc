@@ -51,7 +51,7 @@ function custom_order_ride_unset_driver($ride) {
 }
 
 /**
- * Implements hook_default_rules_configuration_alter()
+ * Implements hook_default_rules_configuration_alter().
  */
 function custom_order_ride_default_rules_configuration_alter(&$configs) {
   if (!empty($configs['custom_order_ride'])) {

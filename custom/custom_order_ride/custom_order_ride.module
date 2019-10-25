@@ -1,12 +1,30 @@
 <?php
-/*
- * @function Creates a cart and relates it to the node.
+/**
+ * @file
+ * Module that handles customer orders.
+ */
+
+/**
+ * Implements hook_node_presave().
  */
 function custom_order_ride_node_presave($node) {
   if ($node->type == 'ride_booker') {
-    //drupal_set_message(print_r($node->field_order['und'][0]['target_id'], true));
-    //drupal_set_message('<pre>' . print_r($node, true) .'</pre>');
-    //*
+    // Check if the user has already booked a ride in the last X seconds.
+    if (!isset($node->nid)){
+      global $user;
+      $now = time();
+      $grace = 120; // TODO get from settings.php or someplace else.
+      $result = db_query('select nid from {node} where changed > (:now - :grace) and uid = :uid', array(':now' => $now, ':grace' => $grace, ':uid' => $user->uid) );
+      //drupal_set_message(print_r($node->field_order['und'][0]['target_id'], true));
+      //drupal_set_message('<pre>' . print_r($node, true) .'</pre>');
+      //*
+      if ($result->rowCount() != FALSE) {
+        // get the nid and goto that
+        $nid = $result->fetchField();
+        drupal_goto('node/' . $nid);
+      }
+    }
+
     if (!isset($node->field_order['und'][0]['target_id'])) {
       $uid = $node->uid;
       $status = 'cart'; // probably change this to cart
